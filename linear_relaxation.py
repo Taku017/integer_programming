@@ -1,7 +1,22 @@
 import numpy as np
 
 class SimplexTable:
-  def __init__(self, v_cnt,s_cnt,a_cnt, obj, e_left, e_right, e_compare):
+  def __init__(self, obj, e_left, e_right, e_compare):
+    v_cnt=len(obj) #変数の数は目的関数の変数とする
+    a_cnt=0 #人為変数の数の初期化
+    s_cnt=0 #スラック変数の数の初期化
+
+    #それぞれ変数の数を決める
+    for cmp in e_compare:
+        if cmp=="Greater":
+            a_cnt+=1
+            s_cnt+=1
+        if cmp=="Equal":
+            a_cnt+=1
+        if cmp=="Less":
+            s_cnt+=1
+
+
     self.v_cnt = v_cnt  # 変数の数
     self.s_cnt = s_cnt  # スラック変数と制約の数
     self.a_cnt=a_cnt    #人為変数の数
@@ -15,9 +30,15 @@ class SimplexTable:
     self.bcol=np.zeros(len(e_right))   #基底の数だけ要素を持つリスト
     self.jinigyou=np.zeros(a_cnt)  #人為変数の1がある行を保存するリスト
 
+
+
+
     self.end=0      #最適解に到達したら1にしてすべてのメソッドから出る
 
     self.min=0      #最適解を入れる
+
+    self.ans=np.zeros(self.v_cnt+self.s_cnt+self.a_cnt)      #最適時の変数
+
 
     if a_cnt!=0:#目的関数の数が2つ必要な時
        self.o_cnt=2
@@ -47,6 +68,14 @@ class SimplexTable:
     print("bases list:")
     print(self.bases)
     print(self.table)
+
+
+  def start_end(self):
+    self.choose_pivot()
+    print("-----\n")
+   
+    return self.ans,self.min
+
 
   def _create_table(self):
     c_table=np.zeros((len(self.e_left)+self.o_cnt,self.v_cnt+self.s_cnt+self.a_cnt+1))  #このメソッド内だけの名前で０行列を作る。行の数を基底変数+目的関数の数にする(基底変数の数と制約式の数は等しい)
@@ -190,7 +219,9 @@ class SimplexTable:
         self.end=1
         self.ans=self.solution() 
         print(self.ans)
+      
         self.obj=self.obj#*-1  #最大化を考えるときは－1倍しない#表への記入のために－1倍したものを戻す
+#        self.obj=self.obj*-1  #最小化の時はこっち
         print("\noptimal solution:")
         for i in range(self.v_cnt):
           self.min+=self.obj[i]*self.ans[i]
