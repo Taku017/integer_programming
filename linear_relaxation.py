@@ -64,15 +64,16 @@ class SimplexTable:
     self.set_value2()
     
     if a_cnt>0:             #二段階法を適用するとき
-        print("phase 1")
-    print("bases list:")
-    print(self.bases)
-    print(self.table)
+        print()
+        #print("phase 1")
+    #print("bases list:")
+    #print(self.bases)
+    #print(self.table)
 
 
   def start_end(self):
     self.choose_pivot()
-    print("-----\n")
+    #print("-----\n")
    
     return self.ans,self.min
 
@@ -128,7 +129,7 @@ class SimplexTable:
                 n+=1
                 m+=1
                 k+=1
-        print(self.jinigyou)
+        #print(self.jinigyou)
         if self.a_cnt>0:  #二段階法するとき
             for i in range(self.v_cnt+self.s_cnt+1):
                 for j in range(self.a_cnt):
@@ -136,7 +137,7 @@ class SimplexTable:
                     self.table[0][i]=self.table[0][i]+self.table[int(col)][i]  #フェーズ1の目的関数行に制約行をたす(人為変数を基底にするため)
  
   def solution(self):
-    print(self.bcol)
+    #print(self.bcol)
     for i in range(self.s_cnt+self.v_cnt):
       if self.bases[i]==1:
         for j in range(len(self.e_right)):
@@ -170,30 +171,30 @@ class SimplexTable:
     min_ratio=-1   #最小の比を-1に初期化(退化するとき比0をとりうるかつ比が負になることはないため)比が負の時は一度も比が計算されていないことを表す    
     if pivot_row!=0:                                     #基底の入れ換えをすべきとき
       for i in range(len(self.e_right)):             #制約の数だけループ
-#        print(i)
+#        #print(i)
         if self.table[i+self.o_cnt][pivot_row]>0:
           ratio=self.table[i+self.o_cnt][0]/self.table[i+self.o_cnt][pivot_row]           #列ごとに比を計算
-          print("ratio:"+str(ratio))
+          #print("ratio:"+str(ratio))
         if self.table[i+self.o_cnt][pivot_row]<=0:     #比を計算しないとき
           ratio=-1           #比がないことを表す
-          print("ratio:No calculation required")
+          #print("ratio:No calculation required")
  
         if min_ratio==-1 and ratio!=-1:         #比が負の時は一度も比が計算されていないことを表す
           min_ratio=ratio                #最初に計算できた比は比の最小値に入れる
           pivot_col=i+self.o_cnt
-#          print(min_ratio,ratio)
-#          print("a")
+#          #print(min_ratio,ratio)
+#          #print("a")
         if ratio<min_ratio and ratio!=-1:               #今考えている比が暫定最小比よりも小さいとき
-#          print(min_ratio,ratio)
+#          #print(min_ratio,ratio)
           min_ratio=ratio
           pivot_col=i+self.o_cnt
-#          print(min_ratio,ratio)
-#          print("b")
+#          #print(min_ratio,ratio)
+#          #print("b")
       if min_ratio==-1:
          self.end==1
          return  0#ピボットすべき行がなかったとき処理を終了
-      print("minimum ratio:"+str(min_ratio))
-      print("pivot:"+str(pivot_col)+","+str(pivot_row))
+      #print("minimum ratio:"+str(min_ratio))
+      #print("pivot:"+str(pivot_col)+","+str(pivot_row))
 
     return pivot_col
 
@@ -211,35 +212,38 @@ class SimplexTable:
         return
 
     if pivot_row!=0:
-        print("\npivot row:"+str(pivot_row))
+        #print("\npivot row:"+str(pivot_row))
+        print()
+        
 
 #行列操作の終わり
     if pivot_row==0 and self.count!=0 and self.end==0:                    #基底の入れ換えを一度でもした後で基底にすべき変数がないとき(フェーズ1・2で2重にchoose_pivotに入るためend==0でこの条件に一度のみ入るようにする)
-        print("\nThe optimal solution has been reached.")
+        #print("\nThe optimal solution has been reached.")
         self.end=1
         self.ans=self.solution() 
-        print(self.ans)
+        #print(self.ans)
       
         self.obj=self.obj#*-1  #最大化を考えるときは－1倍しない#表への記入のために－1倍したものを戻す
 #        self.obj=self.obj*-1  #最小化の時はこっち
-        print("\noptimal solution:")
+        #print("\noptimal solution:")
         for i in range(self.v_cnt):
           self.min+=self.obj[i]*self.ans[i]
-          print(str(self.obj[i])+"*"+str(self.ans[i]), end='')
+          #print(str(self.obj[i])+"*"+str(self.ans[i]), end='')
           if i!=self.v_cnt-1:
-             print("+",end='')
-        print("="+str(self.min))
+             #print("+",end='')
+             pass
+        #print("="+str(self.min))
         return
 
     if pivot_row==0 and self.count==0:                    #基底の入れ換えを一度もせず基底にすべき変数がないとき
-        print("Pivot selection error")
+        #print("Pivot selection error")
         return
    
 
     pivot_col=self.choose_col(pivot_row)
     
     if pivot_col==0: #0のとき、すべての行がNo calculation requiredのとき。
-        print("unbounded")
+        #print("unbounded")
         return
 
     self.swapping_bases(pivot_col,pivot_row)
@@ -261,16 +265,16 @@ class SimplexTable:
         if(i!=pivot_col):
          self.table[i][j]=self.table[i][j]-b*self.table[pivot_col][j]    #各行からb倍したピボット行を引く
 
-    print(self.bcol)
+    #print(self.bcol)
     #基底変数を表すリストを更新(基底を1に非基底を0に)
     self.bases[pivot_row-1]=1
     b=self.bcol[pivot_col-self.o_cnt]    #bは小数になっている
     self.bases[int(b)]=0        #basesのb番目を0にする
     self.count+=1   #回数を＋1
     self.bcol[pivot_col-self.o_cnt]=pivot_row-1
-    print("\n"+str(self.count)+" time bases list:")
-    print(self.bases)
-    print(np.round(self.table,3))               #小数点以下を三桁で表示
+    #print("\n"+str(self.count)+" time bases list:")
+    #print(self.bases)
+    #print(np.round(self.table,3))               #小数点以下を三桁で表示
     
     self.choose_pivot()
 
@@ -284,13 +288,13 @@ class SimplexTable:
     i=self.v_cnt+self.s_cnt+1
     while i<self.v_cnt+self.s_cnt+self.a_cnt+1:
        if self.table[0][i]==0:
-          print("This problem is not possible")
+          #print("This problem is not possible")
           self.end=1
           return    
        i+=1 
    
       
-    print("Phase 1 completed\n--------------\nPhase 2")
+    #print("Phase 1 completed\n--------------\nPhase 2")
     self.count=0  #試行回数の初期化
     self.o_cnt=1  #目的関数の数を１に
     self.a_cnt=0  #人為変数列はいらないため０に（a_cnt==0のとき二段階法をしなくなる）  
@@ -300,8 +304,8 @@ class SimplexTable:
     copy=self.bases
     self.bases=np.zeros(s_cnt+v_cnt)
     self.bases=copy[0:self.v_cnt+self.s_cnt]
-    print(self.bases)
-    print(self.table)
+    #print(self.bases)
+    #print(self.table)
     self.ans= np.zeros(s_cnt+v_cnt) 
 
     self.choose_pivot()

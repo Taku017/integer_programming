@@ -3,6 +3,7 @@ from types import new_class
 from linear_relaxation import SimplexTable
 import numpy as np
 import time
+import copy
 
 
 '''
@@ -83,67 +84,131 @@ class Knapsack:
         self.x_ten= np.zeros(len(bb_obj))#暫定解の変数リストを0に初期化
         self.n=len(bb_obj)
         self.L=[]#考えるノードを入れておく
-
+        self.items=[]#各分枝で整数に固定された変数を挿入していくリスト
         obj_constant_term=0#目的関数の定数項を保存する変数
 
         #分枝の階層、目的関数、制約条件を辞書として入れ初期化。階層0では元の制約条件のままで分枝して階層が増え変数が決まったらそのたびにobj,制約を書き換える
-        self.L.append({'level': 0, 'obj': self.bb_obj, 'R': self.bb_right ,'L': self.bb_left ,'cmp': self.bb_compare,'obj_constant_term':obj_constant_term})
+        self.L.append({'level': 0, 'obj': self.bb_obj, 'R': self.bb_right ,'L': self.bb_left ,'cmp': self.bb_compare,'obj_constant_term':obj_constant_term,'items':self.items})
 
     def knapsak_start_to_end(self):
         
-        print(self.L)
+        #print(self.L)
  
-        if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
-            print("end.")
-            return
-        
 
-        self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
+        #i=0
+        while self.L!=0 :
+            #i+=1
+            if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
+                print("end.")
+                print("The optomal solution :")
+                print(self.x_ten,self.z_ten)
+                return
 
-        P=self.L[0]#今考える問題を取り出す
-        print(P)
-        del self.L[0]#取り出した問題は消す
-        print(self.L)
-        
-        '''LP緩和'''
-        if P['R'][0]>=0:#LP緩和が実行可能のとき
-            simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
-            relax_variable,relax_solution=simplex_table.start_end()
-#        print(relax_variable,relax_solution)
-            
+            self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合   
+            self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
 
-
-        '''分枝限定操作'''
-        if relax_solution+P['obj_constant_term']>self.tentative_sol:#elseのときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
-            obj0=P['obj'][0]#いまから0と1に固定する変数の係数（目的関数の）
-            left0=P['L'][0][0]#いまから0と1に固定する変数の係数（制約条件の）
-            lev=P['level']+1#階層を今の階層+1とする
-            print(obj0,left0)
-            new_right=np.delete(P['R'], 1)
-            R_copy=new_right
-            print(P['R'],R_copy,new_right)
-            
-            if len(P['obj']) > 0:
-                P['obj'] = np.delete(P['obj'], 0)
-            if len(P['L']) > 0:
-                P['L'] = np.delete(P['L'],0,axis=1) #決まった変数の列を制約から消す（axis=1は列） 
-                P['L'] = np.delete(P['L'], 1, axis=0)  # axis=0で第1行を削除。制約が決まると制約が一つ意味をなさなくなるため消す
-            if len(P['cmp']) > 0:
-                del P['cmp'][1]#一つ制約が不要になるため消去
+            print("\nここがすべての問題プール(新しく変数1つを整数値0,1に固定したときの部分問題のリスト)")
+            print(self.L) #LからPが消去されている確認
+            print("ここが終わり")
+ 
+            P=self.L[0]#今考える問題を取り出す
+            #print("\n")
+            #print(P)
+            del self.L[0]#取り出した問題は消す
 
             
-            for i in range(2):#0と1の二回    
-                print(i)
-                obj_con=P['obj_constant_term']+-1*i*obj0#変数が固定されたことで定数項になった分を保存
-                R_copy[0]=new_right[0]+left0*i*-1#左辺の係数が（変数が整数に決まったことにより）右辺に足される
-                print(left0*i*-1)
-                print(R_copy)
-                self.L.append({'level': lev, 'obj': P['obj'], 'R': R_copy,'L': P['L'] ,'cmp': P['cmp'],'obj_constant_term':obj_con})#二回分枝した分の部分問題をLに挿入
+            print("ここが選ばれている")
+            print(P) #LからPが消去されている確認
+            print("ここが終わり")
+            
+
+            '''LP緩和'''
+            if P['R'][0]>=0 and P['level']<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
+                simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
+                relax_variable,relax_solution=simplex_table.start_end()
+                print(P['obj_constant_term'])
+                print('上界計算結果:')
+                print(relax_solution+P['obj_constant_term'],relax_variable)
+            if P['R'][0]<0 and P['level']<self.n:#LP緩和実行不可能
+                print("LP緩和実行不能")
+            
+            
+
+            '''最下層にたどり着いたとき'''#このとき整数条件満たす
+            if P['level']==self.n:
+                total_weight=0
+                for i in range(len(self.bb_obj)):
+                    total_weight+=self.bb_left[0][i]*P['items'][i]
+                print("整数条件満たしているときの総重み:")
+                print(total_weight)
                 
+                if total_weight>self.bb_right[0]:#重み制約を満たさない
+                    print("overweight!")
+                if total_weight<=self.bb_right[0]:
+                    print("制約を満たす\nTentative　solution:",end="")
+                    print(P['obj_constant_term'])
+
+                '''解の更新'''
+                if P['obj_constant_term']>self.z_ten and self.tentative_sol==1 and total_weight<=self.bb_right[0]:#すべての変数が整数(最下層)で暫定解より今の解が大きいとき
+                    old_z_ten=self.z_ten
+                    self.z_ten=P['obj_constant_term']
+                    self.x_ten=P['items']
+                    self.tentative_sol=1#1になっているときは整数条件を満たす暫定解がself.z_tenに入っていることを表す
+                    print('暫定解が更新:'+str(old_z_ten)+'→'+str(self.z_ten))
+                    print(self.x_ten,self.z_ten)
+
+                if self.tentative_sol==0 and total_weight<=self.bb_right[0]:#暫定解の更新が今まで1度もなくすべての変数が整数(最下層)になり、制約を満たすとき
+                    self.z_ten=P['obj_constant_term']
+                    self.x_ten=P['items']
+                    self.tentative_sol=1#暫定解が最低1度は更新されたことを示す
+                    print('暫定解が登録:')
+                    print(self.x_ten,self.z_ten)
+       
+
+            '''限定操作の表示'''
+            if relax_solution+P['obj_constant_term']<=self.z_ten and P['level']<self.n:#このときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
+                print("上界値:"+str(relax_solution+P['obj_constant_term'])+'<='+str(self.z_ten)+"より、以下のノードを捨てる")
+
+
+            '''分枝限定操作'''
+            if relax_solution+P['obj_constant_term']>self.z_ten and P['level']<self.n:#変数がすべて決まっている部分問題では分枝しない
+                obj0=P['obj'][0]#いまから0と1に固定する変数の係数（目的関数の）
+                left0=P['L'][0][0]#いまから0と1に固定する変数の係数（制約条件の）
+                lev=P['level']+1#階層を今の階層+1とする
+                #print(obj0,left0)
+                new_right=np.delete(P['R'], 1)
+                R_copy=new_right
+                #print(P['R'],R_copy,new_right)
             
-            print(self.L[0])
-            print("\n")
-            print(self.L[1])
+                #if文はdelするのに要素が0個のリストから削除する操作をしないため(なくてもいいかも)
+                if len(P['obj']) > 0:
+                    P['obj'] = np.delete(P['obj'], 0)
+                if len(P['L']) > 0:
+                    P['L'] = np.delete(P['L'],0,axis=1) #決まった変数の列を制約から消す（axis=1は列） 
+                    P['L'] = np.delete(P['L'], 1, axis=0)  # axis=0で第1行を削除。制約が決まると制約が一つ意味をなさなくなるため消す
+                if len(P['cmp']) > 0:
+                    cmp_copy=copy.deepcopy(P['cmp'])
+                    del cmp_copy[1]#一つ制約が不要になるため消去
+
+            
+                for i in range(2):#0と1の二回。iが各分枝の固定する整数とも一致
+                    items_copy=copy.deepcopy(P['items'])#深いコピーで今考えている部分問題にて決まっている変数のリストをコピー
+                    #print(items_copy,P['items'])
+                    items_copy.append(i)
+                    #print(items_copy,P['items'])
+                    obj_con=P['obj_constant_term']+-1*i*obj0#変数が固定されたことで定数項になった分を保存
+                    R_copy[0]=new_right[0]+left0*i*-1#左辺の係数が（変数が整数に決まったことにより）右辺に足される
+                    #print(left0*i*-1)
+                    #print(R_copy)
+                    self.L.append({'level': lev, 'obj': P['obj'], 'R': copy.deepcopy(R_copy),'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':copy.deepcopy(items_copy)})#二回分枝した分の部分問題をLに挿入
+                    #copy.deepcopy(R_copy)は深いコピーという。import copyが前提。こうしないと二回目のループでR_copy[0]を書き換えたときに１回目のループのLの'R'が書き変わってしまう。
+                    #pythonではリストをappendするとき参照渡しがされているため    
+            
+                #print(self.L)
+                #print(self.L[0])
+                #print("\n")
+                #print(self.L[1])
+
 
 
         return
