@@ -95,11 +95,11 @@ class Knapsack:
         #print(self.L)
  
 
-        #i=0
+        
         while self.L!=0 :
-            #i+=1
+            
             if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
-                print("end.")
+                print("\nFinished.\n")
                 print("The optomal solution :")
                 print(self.x_ten,self.z_ten)
                 return
@@ -107,30 +107,70 @@ class Knapsack:
             self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合   
             self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
 
-            print("\nここがすべての問題プール(新しく変数1つを整数値0,1に固定したときの部分問題のリスト)")
-            print(self.L) #LからPが消去されている確認
-            print("ここが終わり")
- 
-            P=self.L[0]#今考える問題を取り出す
-            #print("\n")
-            #print(P)
-            del self.L[0]#取り出した問題は消す
+            print("----------\n以下すべての部分問題のリスト(1番目が今から考える部分問題に選ばれる)\n")
+
 
             
-            print("ここが選ばれている")
-            print(P) #LからPが消去されている確認
-            print("ここが終わり")
+
+            '''部分問題リストの表示'''
+       
+            #ここは視認性のために書いた。実効速度重視の場合はコメントアウトする
+            for j in range(len(self.L)):
+                print(j+1,end='.')
+                if self.L[j]['level']!=self.n:
+                    i=self.L[j]['level']
+                    obj_display=str(self.L[j]['obj_constant_term'])+'+'
+                    constraints_display=''
+                    while i<len(self.bb_obj):
+                        obj_display+=str(self.bb_obj[i]*-1)+'*(x'+str(i+1)+')'
+                        constraints_display+=str(self.bb_left[0][i])+'*(x'+str(i+1)+')'
+                        if i!=len(self.bb_obj)-1:
+                            obj_display+='+'
+                            constraints_display+='+'
+                        if i==len(self.bb_obj)-1:
+                            constraints_display+='≦'+str(self.L[j]['R'][0])
+                        i+=1
+                    
+                    print("目的関数:",end='')
+                    print(obj_display)
+                    print('制約条件:'+constraints_display+'\nアイテム決定リスト'+str(self.L[j]['items'])+"\n")
+                if self.L[j]['level']==self.n:                
+                    print("目的関数:",end='')
+                    print(self.L[j]['obj_constant_term'])
+                    a=np.dot(self.bb_left[0],self.L[j]['items'])
+                    print('制約条件:'+str(a)+'≦'+str(self.bb_right[0])+'\nアイテム決定リスト'+str(self.L[j]['items'])+"\n")                 
+                
+                
+
+            print("----------\n")
+            
+
+            #print("\n")
+            
+            P=self.L[0]#今考える問題を取り出す
+            del self.L[0]#取り出した問題は消す
+            '''実効速度重視のときはここを出力させる'''
+            #print(self.L) #LからPが消去されている確認
+
+            #選ばれた部分問題を見たいとき
+            #print("選ばれた部分問題")
+            #print(P) 
+            #print("目的関数:",end='')
+
+
+
+            #print("----------\n")
             
 
             '''LP緩和'''
             if P['R'][0]>=0 and P['level']<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
                 simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
                 relax_variable,relax_solution=simplex_table.start_end()
-                print(P['obj_constant_term'])
+                #print(P['obj_constant_term'])
                 print('上界計算結果:')
-                print(relax_solution+P['obj_constant_term'],relax_variable)
+                print(relax_solution+P['obj_constant_term'],relax_variable) 
             if P['R'][0]<0 and P['level']<self.n:#LP緩和実行不可能
-                print("LP緩和実行不能")
+                print("LP緩和実行不能。これ以下のノードを捨てる")
             
             
 
@@ -143,9 +183,9 @@ class Knapsack:
                 print(total_weight)
                 
                 if total_weight>self.bb_right[0]:#重み制約を満たさない
-                    print("overweight!")
+                    print("Overweight")
                 if total_weight<=self.bb_right[0]:
-                    print("制約を満たす\nTentative　solution:",end="")
+                    print("制約を満たす\nInteger　solution:",end="")
                     print(P['obj_constant_term'])
 
                 '''解の更新'''
@@ -171,7 +211,7 @@ class Knapsack:
 
 
             '''分枝限定操作'''
-            if relax_solution+P['obj_constant_term']>self.z_ten and P['level']<self.n:#変数がすべて決まっている部分問題では分枝しない
+            if relax_solution+P['obj_constant_term']>self.z_ten and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
                 obj0=P['obj'][0]#いまから0と1に固定する変数の係数（目的関数の）
                 left0=P['L'][0][0]#いまから0と1に固定する変数の係数（制約条件の）
                 lev=P['level']+1#階層を今の階層+1とする
@@ -216,8 +256,7 @@ class Knapsack:
 
 
 
-
-
+#例題1
 obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 e_left=np.array([[2,3,4,5],#ここが重みの制約
                 [1,0,0,0],
@@ -228,6 +267,34 @@ e_right=np.array([7,1,1,1,1])#一つ目が重みの上限
 e_compare=['Less','Less','Less','Less','Less']
 
 
+
+'''
+#例題2
+obj=np.array([-10, -14, -21])  #最大化を考えるので―1倍
+e_left=np.array([[2,3,6],#ここが重みの制約
+                [1,0,0],
+                [0,1,0],#ここの0と1で表された制約はLP緩和に使う
+                [0,0,1]])
+e_right=np.array([7,1,1,1])#一つ目が重みの上限
+e_compare=['Less','Less','Less','Less']
+'''
+
+
+'''
+#例題3
+obj=np.array([-3, -4, -1, -2])  #最大化を考えるので―1倍
+e_left=np.array([[2,3,1,3],#ここが重みの制約
+                [1,0,0,0],
+                [0,1,0,0],#ここの0と1で表された制約はLP緩和に使う
+                [0,0,1,0],
+                [0,0,0,1]])
+e_right=np.array([4,1,1,1,1])#一つ目が重みの上限
+e_compare=['Less','Less','Less','Less','Less']
+'''
+
+
 start=time.time()
 knapsack = Knapsack( bb_obj=obj, bb_left=e_left, bb_right=e_right,bb_compare=e_compare)
 knapsack.knapsak_start_to_end()
+finish=time.time()
+print('Time:'+str(finish-start))
