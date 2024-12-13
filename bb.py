@@ -87,6 +87,7 @@ class Knapsack:
         self.items=[]#各分枝で整数に固定された変数を挿入していくリスト
         obj_constant_term=0#目的関数の定数項を保存する変数
         self.maximum_integer_range=maximum_integer_range#整数の取りうる最大
+        self.simplex_count=0#シンプレックス法の回数
         #self.q=q#準最適解許容率
         #self.solution_pool=[]
 
@@ -97,15 +98,15 @@ class Knapsack:
     def knapsak_start_to_end(self):
         
         #print(self.L)
- 
-
-        
+         
         while self.L!=0 :
             
+            '''終了処理'''
             if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
                 print("\nFinished.\n")
                 print("The optomal solution :")
                 print(self.x_ten,self.z_ten)
+                print('Simplex count:'+str(self.simplex_count))
                 return
 
             self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合   
@@ -170,6 +171,7 @@ class Knapsack:
             if P['R'][0]>=0 and P['level']<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
                 simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
                 relax_variable,relax_solution=simplex_table.start_end()
+                self.simplex_count+=1
                 #print(P['obj_constant_term'])
                 print('上界計算結果:')
                 print(relax_solution+P['obj_constant_term'],relax_variable) 
@@ -256,7 +258,7 @@ class Knapsack:
 
 
 
-        return
+
 
 
 
