@@ -74,13 +74,14 @@ print("\nTime:"+str(jikan))
 
 '''ここからナップザック問題'''
 class Knapsack:
-    def __init__(self,bb_obj,bb_left,bb_right,bb_compare,maximum_integer_range,):
+    def __init__(self,bb_obj,bb_left,bb_right,bb_compare,maximum_integer_range,q):
         self.bb_obj=bb_obj
         self.bb_left=bb_left
         self.bb_right=bb_right
         self.bb_compare=bb_compare
         self.tentative_sol=0#暫定解があるとき1にする
         self.z_ten=-1#暫定解の値を-1で初期化(最適解が0だった場合に備え0を避ける)
+        print('初期暫定解:-1とする')
         self.x_ten= np.zeros(len(bb_obj))#暫定解の変数リストを0に初期化
         self.n=len(bb_obj)
         self.L=[]#考えるノードを入れておく
@@ -88,136 +89,68 @@ class Knapsack:
         obj_constant_term=0#目的関数の定数項を保存する変数
         self.maximum_integer_range=maximum_integer_range#整数の取りうる最大
         self.simplex_count=0#シンプレックス法の回数
-        #self.q=q#準最適解許容率
-        #self.solution_pool=[]
+        self.q=q#準最適解許容率
+        self.process_pool=[]#準最適解を考えるときにノードを入れておく
+        self.solution_pool=[]#準最適解を入れる
 
+ 
+        '''LP緩和'''
+        if self.bb_right[0]>=0 :#LP緩和 
+            simplex_table = SimplexTable( obj=obj, e_left=bb_left, e_right=bb_right, e_compare=bb_compare)
+            relax_variable,relax_solution=simplex_table.start_end()
+            self.simplex_count+=1
+            #print(P['obj_constant_term'])
+            #print('上界計算結果:')
+            #print(relax_solution+L['obj_constant_term'],relax_variable) 
 
-        #分枝の階層、目的関数、制約条件を辞書として入れ初期化。階層0では元の制約条件のままで分枝して階層が増え変数が決まったらそのたびにobj,制約を書き換える
-        self.L.append({'level': 0, 'obj': self.bb_obj, 'R': self.bb_right ,'L': self.bb_left ,'cmp': self.bb_compare,'obj_constant_term':obj_constant_term,'items':self.items})
-
-    def knapsak_start_to_end(self):
-        
-        #print(self.L)
-         
-        while self.L!=0 :
-            
+        #分枝の階層、目的関数、制約条件を辞書として入れ初期化。階層0では元の制約条件のままで分枝して階層が増え変数が決まったらそのたびにobj,制約を書き換える.
+        self.L.append({'level': 0, 'obj': self.bb_obj, 'R': self.bb_right ,'L': self.bb_left ,'cmp': self.bb_compare,'obj_constant_term':obj_constant_term,'items':self.items,'upper_world':relax_solution})        
+      
+    def finding_suboptimal_solution(self):
+        print('\n====================\n準最適解探索開始')
+        while True:
             '''終了処理'''
-            if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
+            if len(self.process_pool)==0:#Lに考えるべきノードでの問題が入っていなければ終了
                 print("\nFinished.\n")
-                print("The optomal solution :")
-                print(self.x_ten,self.z_ten)
-                print('Simplex count:'+str(self.simplex_count))
+                print("The suboptomal solution :")
+                for m in range(len(self.solution_pool)):
+                    print(self.solution_pool[m]['solution'],self.solution_pool[m]['x'])
+                print('Simplex count:'+str(self.simplex_count)) 
                 return
 
-            self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合   
-            self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
+            '''ここは探索順を深さ優先探索にしてわかりやすくしているだけ。最適解の更新はないため効率には影響しないと考える'''
+            self.process_pool = sorted(self.process_pool, key=lambda x: x['R'][0])#各変数1を先に探索する場合
+            self.process_pool = sorted(self.process_pool, key=lambda x: x['level'], reverse=True)#process_poolを階層(level)でソートする(このコードは深さ優先探索としたいため)         
 
-            print("----------\n以下すべての部分問題のリスト(1番目が今から考える部分問題に選ばれる)\n")
-
-
+            P=self.process_pool[0]#今考える問題を取り出す
+            del self.process_pool[0]
             
-
-            '''部分問題リストの表示'''
-       
-            #ここは視認性のために書いた。実行速度重視の場合はコメントアウトする
-            for j in range(len(self.L)):
-                print(j+1,end='.')
-                if self.L[j]['level']!=self.n:
-                    i=self.L[j]['level']
-                    obj_display=str(self.L[j]['obj_constant_term'])+'+'
-                    constraints_display=''
-                    while i<len(self.bb_obj):
-                        obj_display+=str(self.bb_obj[i]*-1)+'*(x'+str(i+1)+')'
-                        constraints_display+=str(self.bb_left[0][i])+'*(x'+str(i+1)+')'
-                        if i!=len(self.bb_obj)-1:
-                            obj_display+='+'
-                            constraints_display+='+'
-                        if i==len(self.bb_obj)-1:
-                            constraints_display+='≦'+str(self.L[j]['R'][0])
-                        i+=1
-                    
-                    print("目的関数　　　　　:",end='')
-                    print(obj_display)
-                    print('　制約条件　　　　　:'+constraints_display+'\n　アイテム決定リスト:'+str(self.L[j]['items'])+"\n")
-                if self.L[j]['level']==self.n:                
-                    print("目的関数　　　　　:",end='')
-                    print(self.L[j]['obj_constant_term'])
-                    a=np.dot(self.bb_left[0],self.L[j]['items'])
-                    print('　制約条件　　　　　:'+str(a)+'≦'+str(self.bb_right[0])+'\n　アイテム決定リスト:'+str(self.L[j]['items'])+"\n")                 
-                
-                
-
-            print("----------\n")
-            
-
-            #print("\n")
-            
-            P=self.L[0]#今考える問題を取り出す
-            del self.L[0]#取り出した問題は消す
-            '''実行速度重視のときはここを出力させる'''
-            #print(self.L) #LからPが消去されている確認
-
-            #選ばれた部分問題を見たいとき
-            #print("選ばれた部分問題")
-            #print(P) 
-            #print("目的関数:",end='')
-
-
-
-            #print("----------\n")
-            
-
-            '''LP緩和'''
-            if P['R'][0]>=0 and P['level']<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
-                simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
-                relax_variable,relax_solution=simplex_table.start_end()
-                self.simplex_count+=1
-                #print(P['obj_constant_term'])
-                print('上界計算結果:')
-                print(relax_solution+P['obj_constant_term'],relax_variable) 
-            if P['R'][0]<0 and P['level']<self.n:#LP緩和実行不可能のとき
-                print("LP緩和実行不能。これ以下のノードを捨てる")
-            
-            
-
+            #print('\n')
+            print(P['items'])
             '''最下層にたどり着いたとき'''#このとき整数条件満たす
             if P['level']==self.n:
-                total_weight=0
-                for i in range(len(self.bb_obj)):
-                    total_weight+=self.bb_left[0][i]*P['items'][i]
-                print("整数条件満たしているときの総重み:")
-                print(total_weight)
-                
-                if total_weight>self.bb_right[0]:#重み制約を満たさない
+                if P['upper_world']<0:#重み制約を満たさない(負の上界はありえない。下の上界計算で重み制限を満たさないときP['upper_world']=-1とするようにした)
                     print("Overweight")
-                if total_weight<=self.bb_right[0]:
-                    print("制約を満たす\nInteger　solution:",end="")
+                if P['upper_world']>=0:#制約を満たす
+                    print("制約を満たす許容解:",end="")
                     print(P['obj_constant_term'])
+                   
 
                 '''解の更新'''
-                if P['obj_constant_term']>self.z_ten and self.tentative_sol==1 and total_weight<=self.bb_right[0]:#すべての変数が整数(最下層)で暫定解より今の解が大きいとき
-                    old_z_ten=self.z_ten
-                    self.z_ten=P['obj_constant_term']
-                    self.x_ten=P['items']
-                    self.tentative_sol=1#1になっているときは整数条件を満たす暫定解がself.z_tenに入っていることを表す
-                    print('暫定解が更新:'+str(old_z_ten)+'→'+str(self.z_ten))
-                    print(self.x_ten,self.z_ten)
-
-                if self.tentative_sol==0 and total_weight<=self.bb_right[0]:#暫定解の更新が今まで1度もなくすべての変数が整数(最下層)になり、制約を満たすとき
-                    self.z_ten=P['obj_constant_term']
-                    self.x_ten=P['items']
-                    self.tentative_sol=1#暫定解が最低1度は更新されたことを示す
-                    print('暫定解が登録:')
-                    print(self.x_ten,self.z_ten)
-       
-
+                if P['obj_constant_term']>=self.z_ten*self.q and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解*qより今の解が大きいとき
+                    self.solution_pool.append({'x':P['items'],'solution':P['obj_constant_term']})
+                    print('解プールに追加:'+str(P['obj_constant_term']))
+                if P['obj_constant_term']<self.z_ten*self.q and P['upper_world']>=0:
+                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*q:'+str(self.z_ten*self.q)+"より、解プールに追加せず")
+            
+                    
             '''限定操作の表示'''
-            if relax_solution+P['obj_constant_term']<=self.z_ten and P['level']<self.n:#このときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
-                print("上界値:"+str(relax_solution+P['obj_constant_term'])+'<='+str(self.z_ten)+"より、以下のノードを捨てる")
+            if P['upper_world']<=self.z_ten*self.q and P['level']<self.n:#上界が最適解*q以下のときはそれ以下のノードを考えない
+                print("上界値:"+str(P['upper_world'])+'<=暫定解*q:'+str(self.z_ten*self.q)+"より、以下のノードを捨てる")
 
-
-            '''分枝限定操作'''
-            if relax_solution+P['obj_constant_term']>self.z_ten and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
+            '''分枝限定操作(ほぼknapsak_start_to_endのコピペ)'''
+            if P['upper_world']>self.z_ten*self.q and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
+                print("上界値:"+str(P['upper_world'])+'>暫定解*q:'+str(self.z_ten*self.q)+"より、ノードを分枝する")
                 obj0=P['obj'][0]#いまから0と1等に固定する変数の係数（目的関数の）
                 left0=P['L'][0][0]#いまから0と1等に固定する変数の係数（制約条件の）
                 lev=P['level']+1#階層を今の階層+1とする
@@ -247,10 +180,220 @@ class Knapsack:
                     new_right[0]=new_right[0]+left0*i*-1#左辺の係数が（変数が整数に決まったことにより）右辺に足される
                     #print(left0*i*-1)
                     #print(new_right)
-                    self.L.append({'level': lev, 'obj': P['obj'], 'R': new_right,'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':items_copy})#二回分枝した分の部分問題をLに挿入
+
+                    #分枝したときに即LP緩和を実行する
+                    '''LP緩和'''
+                    if new_right[0]>=0 and lev<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
+                        simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=new_right, e_compare=cmp_copy)
+                        relax_variable,relax_solution=simplex_table.start_end()
+                        self.simplex_count+=1
+                        #print(P['obj_constant_term'])
+                        print('部分問題'+str(i+1)+'.上界計算結果:')
+                        print(relax_solution+obj_con,relax_variable) 
+                    upper_world=relax_solution+obj_con
+                    if new_right[0]<0 and lev<self.n:#LP緩和実行不可能のとき
+                        print('部分問題'+str(i+1)+".LP緩和実行不能。これ以下のノードを捨てる")
+                        upper_world=-1
+                    if lev==self.n:#すべての変数が整数に決まったとき
+                        if np.dot(self.bb_left[0],items_copy)<=self.bb_right[0]:
+                            upper_world=obj_con
+                        if np.dot(self.bb_left[0],items_copy)>self.bb_right[0]:#重み制約を満たさないとき
+                            upper_world=-1
+
+                    self.process_pool.append({'level': lev, 'obj': P['obj'], 'R': new_right,'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':items_copy,'upper_world':upper_world})#二回分枝した分の部分問題をLに挿入
+
+
+
+
+    def knapsak_start_to_end(self):
+        
+        #print(self.L)
+         
+        while True:
+            
+            '''終了処理'''
+            if len(self.L)==0:#Lに考えるべきノードでの問題が入っていなければ終了
+                print("\nFinished.\n")
+                print("The optomal solution :")
+                print(self.x_ten,self.z_ten)
+                print('Simplex count:'+str(self.simplex_count))
+                if self.q!=1:#準最適解を求めたいとき
+                    for l in range(len(self.process_pool)):
+                        print(self.process_pool[l]['upper_world'])
+                    self.finding_suboptimal_solution()                    
+                return
+
+            self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合
+            #self.L = sorted(self.L, key=lambda x: x['upper_world'],reverse=True)#上界でソートする場合
+            self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
+
+            print("====================\n以下すべての部分問題のリスト(1番目が今から考える部分問題に選ばれる)\n")
+
+
+            
+
+            '''部分問題リストの表示'''
+       
+            #ここは視認性のために書いた。実行速度重視の場合はコメントアウトする
+            for j in range(len(self.L)):
+                print(j+1,end='.')
+                if self.L[j]['level']!=self.n:
+                    i=self.L[j]['level']
+                    obj_display=str(self.L[j]['obj_constant_term'])+'+'
+                    constraints_display=''
+                    while i<len(self.bb_obj):
+                        obj_display+=str(self.bb_obj[i]*-1)+'*(x'+str(i+1)+')'
+                        constraints_display+=str(self.bb_left[0][i])+'*(x'+str(i+1)+')'
+                        if i!=len(self.bb_obj)-1:
+                            obj_display+='+'
+                            constraints_display+='+'
+                        if i==len(self.bb_obj)-1:
+                            constraints_display+='≦'+str(self.L[j]['R'][0])
+                        i+=1
+                    
+                    print("目的関数　　　　　:",end='')
+                    print(obj_display)
+                    print('　制約条件　　　　　:'+constraints_display+'\n　アイテム決定リスト:'+str(self.L[j]['items']))
+                if self.L[j]['level']==self.n:                
+                    print("目的関数　　　　　:",end='')
+                    print(self.L[j]['obj_constant_term'])
+                    a=np.dot(self.bb_left[0],self.L[j]['items'])
+                    print('　制約条件　　　　　:'+str(a)+'≦'+str(self.bb_right[0])+'\n　アイテム決定リスト:'+str(self.L[j]['items']))  
+                if self.L[j]['upper_world']>=0:
+                    print("　上界値　　　　　　:"+str(self.L[j]['upper_world'])+"\n")
+                if self.L[j]['upper_world']<0:
+                    print("　上界値　　　　　　:実行不能(-1とする)\n")
+                
+                
+
+            print("----------\n")
+            
+
+            #print("\n")
+            
+            P=self.L[0]#今考える問題を取り出す
+            del self.L[0]#取り出した問題は消す
+            '''実行速度重視で過程を見たいときはここを出力させる'''
+            #print(self.L) #LからPが消去されている確認
+
+            #選ばれた部分問題を見たいとき
+            #print("選ばれた部分問題")
+            #print(P) 
+            #print("目的関数:",end='')
+
+
+
+            #print("----------\n")
+            
+            
+            '''ここはコメントアウトしておく。
+            #LP緩和を計算する場所を分枝したときに変えたため。
+            if P['R'][0]>=0 and P['level']<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
+                simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=P['R'], e_compare=P['cmp'])
+                relax_variable,relax_solution=simplex_table.start_end()
+                self.simplex_count+=1
+                #print(P['obj_constant_term'])
+                print('上界計算結果:')
+                print(relax_solution+P['obj_constant_term'],relax_variable) 
+            if P['R'][0]<0 and P['level']<self.n:#LP緩和実行不可能のとき
+                print("LP緩和実行不能。これ以下のノードを捨てる")
+            '''
+            
+            
+
+            '''最下層にたどり着いたとき'''#このとき整数条件満たす
+            if P['level']==self.n:
+                if P['upper_world']<0:#重み制約を満たさない(負の上界はありえない。下の上界計算で重み制限を満たさないときP['upper_world']=-1とするようにした)
+                    print("Overweight")
+                if P['upper_world']>=0:#制約を満たす
+                    print("制約を満たす\nInteger　solution:",end="")
+                    print(P['obj_constant_term'])
+                    if self.q!=1:#準最適解を求めたいとき
+                        self.process_pool.append(P)
+
+                '''解の更新'''
+                if P['obj_constant_term']>self.z_ten and self.tentative_sol==1 and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解より今の解が大きいとき
+                    old_z_ten=self.z_ten
+                    self.z_ten=P['obj_constant_term']
+                    self.x_ten=P['items']
+                    self.tentative_sol=1#1になっているときは整数条件を満たす暫定解がself.z_tenに入っていることを表す
+                    print('暫定解が更新:'+str(old_z_ten)+'→'+str(self.z_ten))
+                    print(self.x_ten,self.z_ten)
+                if P['obj_constant_term']<self.z_ten and self.tentative_sol==1 and P['upper_world']>=0:#解の更新をしない場合の表示
+                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解:'+str(self.z_ten)+"より、暫定解の更新せず")
+
+                if self.tentative_sol==0 and P['upper_world']>=0:#暫定解の更新が今まで1度もなくすべての変数が整数(最下層)になり、制約を満たすとき
+                    self.z_ten=P['obj_constant_term']
+                    self.x_ten=P['items']
+                    self.tentative_sol=1#暫定解が最低1度は更新されたことを示す
+                    print('暫定解が登録:')
+                    print(self.x_ten,self.z_ten)
+       
+
+
+            '''限定操作の表示'''
+            if P['upper_world']<=self.z_ten and P['level']<self.n:#このときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
+                print("上界値:"+str(P['upper_world'])+'<=暫定解:'+str(self.z_ten)+"より、以下のノードを捨てる")
+                if P['upper_world']>=0 and self.q!=1:#LP緩和実行可能かつ準最適解を求めたいとき
+                    self.process_pool.append(P)
+
+
+            '''分枝限定操作'''
+            if P['upper_world']>self.z_ten and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
+                print("上界値:"+str(P['upper_world'])+'>暫定解:'+str(self.z_ten)+"より、ノードを分枝する")
+                obj0=P['obj'][0]#いまから0と1等に固定する変数の係数（目的関数の）
+                left0=P['L'][0][0]#いまから0と1等に固定する変数の係数（制約条件の）
+                lev=P['level']+1#階層を今の階層+1とする
+                #print(obj0,left0)
+
+                #print(P['R'],R_copy,new_right)
+            
+                #if文はdelするのに要素が0個のリストから削除する操作をしないため(なくてもいいかも)
+                if len(P['obj']) > 0:
+                    P['obj'] = np.delete(P['obj'], 0)
+                if len(P['L']) > 0:#左辺は変数が0,1,2,...に対して同じでいいため下のfor文に入れなくていい
+                    P['L'] = np.delete(P['L'],0,axis=1) #決まった変数の列を制約から消す（axis=1は列） 
+                    P['L'] = np.delete(P['L'], 1, axis=0)  # axis=0で第1行を削除。制約が決まると制約が一つ意味をなさなくなるため消す
+                if len(P['cmp']) > 0:
+                    cmp_copy=copy.deepcopy(P['cmp'])
+                    del cmp_copy[1]#一つ制約が不要になるため消去
+
+            
+                for i in range(maximum_integer_range+1):#0と1の二回。iが各分枝の固定する整数とも一致。この中にあるものは決まった変数によってそれぞれ別の値をとるもの(右辺、定数項、アイテム決定リスト等)
+                    items_copy=copy.deepcopy(P['items'])#深いコピーで今考えている部分問題にて決まっている変数のリストをコピー
+                    #print(items_copy,P['items'])
+                    items_copy.append(i)
+                    #print(items_copy,P['items'])
+                    obj_con=P['obj_constant_term']+-1*i*obj0#変数が固定されたことで目的関数の係数で「定数項」になった分を保存！
+                    new_right=copy.deepcopy(P['R'])
+                    new_right=np.delete(new_right, 1)
+                    new_right[0]=new_right[0]+left0*i*-1#左辺の係数が（変数が整数に決まったことにより）右辺に足される
+                    #print(left0*i*-1)
+                    #print(new_right)
+
+                    #分枝したときに即LP緩和を実行する
+                    '''LP緩和'''
+                    if new_right[0]>=0 and lev<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
+                        simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=new_right, e_compare=cmp_copy)
+                        relax_variable,relax_solution=simplex_table.start_end()
+                        self.simplex_count+=1
+                        #print(P['obj_constant_term'])
+                        print('部分問題'+str(i+1)+'.上界計算結果:')
+                        print(relax_solution+obj_con,relax_variable) 
+                    upper_world=relax_solution+obj_con
+                    if new_right[0]<0 and lev<self.n:#LP緩和実行不可能のとき
+                        print('部分問題'+str(i+1)+".LP緩和実行不能。これ以下のノードを捨てる")
+                        upper_world=-1
+                    if lev==self.n:#すべての変数が整数に決まったとき
+                        if np.dot(self.bb_left[0],items_copy)<=self.bb_right[0]:
+                            upper_world=obj_con
+                        if np.dot(self.bb_left[0],items_copy)>self.bb_right[0]:#重み制約を満たさないとき
+                            upper_world=-1
+
+                    self.L.append({'level': lev, 'obj': P['obj'], 'R': new_right,'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':items_copy,'upper_world':upper_world})#二回分枝した分の部分問題をLに挿入
                     #copy.deepcopy(R_copy)は深いコピーという。import copyが前提。こうしないと二回目のループでR_copy[0]を書き換えたときに１回目のループのLの'R'が書き変わってしまう。
                     #pythonではリストをappendするとき参照渡しがされているため    
-            
+
                 #print(self.L)
                 #print(self.L[0])
                 #print("\n")
@@ -268,7 +411,7 @@ obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 value=np.array([2,3,4,5])
 weight_limit=7
 maximum_integer_range=1#整数条件の最大値
-#q=0.8#準最適解許容率
+q=1#準最適解許容率
 
 '''
 #これはコメントアウトしておく.
@@ -340,10 +483,10 @@ e_right = np.array([weight_limit] + [maximum_integer_range] * len(obj))
 I = np.eye(len(value), dtype=int)  # 単位行列
 e_left = np.vstack([value, I])  # 上に価値(value)を追加
 e_compare=['Less'] * (len(obj) + 1)
-print(e_left,e_right,e_compare)
+#print(e_left,e_right,e_compare)
 
 start=time.time()
-knapsack = Knapsack( bb_obj=obj, bb_left=e_left, bb_right=e_right,bb_compare=e_compare,maximum_integer_range=maximum_integer_range)
+knapsack = Knapsack( bb_obj=obj, bb_left=e_left, bb_right=e_right,bb_compare=e_compare,maximum_integer_range=maximum_integer_range,q=q)
 knapsack.knapsak_start_to_end()
 finish=time.time()
 print('Time:'+str(finish-start))
