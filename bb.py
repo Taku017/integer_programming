@@ -137,20 +137,20 @@ class Knapsack:
                    
 
                 '''解の更新'''
-                if P['obj_constant_term']>=self.z_ten*self.q and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解*qより今の解が大きいとき
+                if P['obj_constant_term']>=self.z_ten*(1-self.q/100) and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解*qより今の解が大きいとき
                     self.solution_pool.append({'x':P['items'],'solution':P['obj_constant_term']})
                     print('解プールに追加:'+str(P['obj_constant_term']))
-                if P['obj_constant_term']<self.z_ten*self.q and P['upper_world']>=0:
-                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*q:'+str(self.z_ten*self.q)+"より、解プールに追加せず")
+                if P['obj_constant_term']<self.z_ten*(1-self.q/100) and P['upper_world']>=0:
+                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、解プールに追加せず")
             
                     
             '''限定操作の表示'''
             if P['upper_world']<=self.z_ten*self.q and P['level']<self.n:#上界が最適解*q以下のときはそれ以下のノードを考えない
-                print("上界値:"+str(P['upper_world'])+'<=暫定解*q:'+str(self.z_ten*self.q)+"より、以下のノードを捨てる")
+                print("上界値:"+str(P['upper_world'])+'<=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、以下のノードを捨てる")
 
             '''分枝限定操作(ほぼknapsak_start_to_endのコピペ)'''
-            if P['upper_world']>self.z_ten*self.q and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
-                print("上界値:"+str(P['upper_world'])+'>暫定解*q:'+str(self.z_ten*self.q)+"より、ノードを分枝する")
+            if P['upper_world']>self.z_ten*(1-self.q/100) and P['level']<self.n and P['R'][0]>=0:#変数がすべて決まっている部分問題では分枝しない,かつLP実行不能のとき分枝しない
+                print("上界値:"+str(P['upper_world'])+'>暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、ノードを分枝する")
                 obj0=P['obj'][0]#いまから0と1等に固定する変数の係数（目的関数の）
                 left0=P['L'][0][0]#いまから0と1等に固定する変数の係数（制約条件の）
                 lev=P['level']+1#階層を今の階層+1とする
@@ -411,7 +411,7 @@ obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 value=np.array([2,3,4,5])
 weight_limit=7
 maximum_integer_range=1#整数条件の最大値
-q=1#準最適解許容率
+q=20#準最適解許容率
 
 '''
 #これはコメントアウトしておく.

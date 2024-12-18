@@ -309,4 +309,3 @@ class SimplexTable:
     self.ans= np.zeros(s_cnt+v_cnt) 
 
     self.choose_pivot()
-
