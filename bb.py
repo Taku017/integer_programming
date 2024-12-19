@@ -111,6 +111,7 @@ class Knapsack:
         for l in range(len(self.process_pool)):
             print('level:'+str(self.process_pool[l]['level'])+'  上界値:'+str(self.process_pool[l]['upper_world']))
         while True:
+            
             '''終了処理'''
             if len(self.process_pool)==0:#Lに考えるべきノードでの問題が入っていなければ終了
                 print("\nFinished.\n")
@@ -127,7 +128,7 @@ class Knapsack:
 
             P=self.process_pool[0]#今考える問題を取り出す
             del self.process_pool[0]
-            
+            print('----------\n今考える部分問題のアイテム決定リスト:')
             #print('\n')
             print(P['items'])
             '''最下層にたどり着いたとき'''#このとき整数条件満たす
@@ -189,7 +190,7 @@ class Knapsack:
                     if new_right[0]>=0 and lev<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
                         simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=new_right, e_compare=cmp_copy)
                         relax_variable,relax_solution=simplex_table.start_end()
-                        print(relax_variable,relax_solution)
+                        #print(relax_variable,relax_solution)
                         self.simplex_count+=1
                         #print(P['obj_constant_term'])
                         print('部分問題'+str(i+1)+'.上界計算結果:')
@@ -221,7 +222,7 @@ class Knapsack:
                 print("The optomal solution :")
                 print(self.x_ten,self.z_ten)
                 print('Simplex count:'+str(self.simplex_count))
-                if self.q!=1:#準最適解を求めたいとき
+                if self.q!=0:#準最適解を求めたいとき
                     self.finding_suboptimal_solution()                    
                 return
 
@@ -310,7 +311,7 @@ class Knapsack:
                 if P['upper_world']>=0:#制約を満たす
                     print("制約を満たす\nInteger　solution:",end="")
                     print(P['obj_constant_term'])
-                    if self.q!=1:#準最適解を求めたいとき
+                    if self.q!=0:#準最適解を求めたいとき
                         self.process_pool.append(P)
 
                 '''解の更新'''
@@ -337,7 +338,7 @@ class Knapsack:
             '''限定操作の表示'''
             if P['upper_world']<=self.z_ten and P['level']<self.n:#このときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
                 print("上界値:"+str(P['upper_world'])+'<=暫定解:'+str(self.z_ten)+"より、以下のノードを捨てる")
-                if P['upper_world']>=0 and self.q!=1:#LP緩和実行可能かつ準最適解を求めたいとき
+                if P['upper_world']>=0 and self.q!=0:#LP緩和実行可能かつ準最適解を求めたいとき
                     self.process_pool.append(P)
 
 
@@ -408,7 +409,7 @@ class Knapsack:
 
 
 
-
+             
 #例題1
 obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 value=np.array([2,3,4,5])
@@ -441,7 +442,7 @@ obj=np.array([-10, -14, -21])  #最大化を考えるので―1倍
 value=np.array([2,3,6])
 weight_limit=7
 maximum_integer_range=2#整数条件の最大値
-q=20#解プール機能
+q=0#解プール機能
 '''
 
 '''これはコメントアウトしておくメモ
