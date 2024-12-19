@@ -107,7 +107,9 @@ class Knapsack:
         self.L.append({'level': 0, 'obj': self.bb_obj, 'R': self.bb_right ,'L': self.bb_left ,'cmp': self.bb_compare,'obj_constant_term':obj_constant_term,'items':self.items,'upper_world':relax_solution})        
       
     def finding_suboptimal_solution(self):
-        print('\n====================\n準最適解探索開始')
+        print('\n====================\n準最適解探索開始\n保存したノード:')
+        for l in range(len(self.process_pool)):
+            print('level:'+str(self.process_pool[l]['level'])+'  上界値:'+str(self.process_pool[l]['upper_world']))
         while True:
             '''終了処理'''
             if len(self.process_pool)==0:#Lに考えるべきノードでの問題が入っていなければ終了
@@ -118,7 +120,8 @@ class Knapsack:
                 print('Simplex count:'+str(self.simplex_count)) 
                 return
 
-            '''ここは探索順を深さ優先探索にしてわかりやすくしているだけ。最適解の更新はないため効率には影響しないと考える'''
+            '''ここは実行時間重視ならばコメントアウトする。'''
+            '''深さ優先探索にしてわかりやすくしているだけ。最適解の更新はないため探索の効率には影響しないと思う。したがってソートしている分だけ実行が遅くなる'''
             self.process_pool = sorted(self.process_pool, key=lambda x: x['R'][0])#各変数1を先に探索する場合
             self.process_pool = sorted(self.process_pool, key=lambda x: x['level'], reverse=True)#process_poolを階層(level)でソートする(このコードは深さ優先探索としたいため)         
 
@@ -139,7 +142,7 @@ class Knapsack:
                 '''解の更新'''
                 if P['obj_constant_term']>=self.z_ten*(1-self.q/100) and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解*qより今の解が大きいとき
                     self.solution_pool.append({'x':P['items'],'solution':P['obj_constant_term']})
-                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+'より、解プールに追加:'+str(P['obj_constant_term']))
+                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+'より、解プールに追加:'+str(P['obj_constant_term']))#level==4でかつ実行可能のとき(許容解のとき)、P['upper_world']==P['obj_constant_term']である
                 if P['obj_constant_term']<self.z_ten*(1-self.q/100) and P['upper_world']>=0:
                     print("得られた許容解:"+str(P['upper_world'])+'<暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、解プールに追加せず")
             
@@ -219,8 +222,6 @@ class Knapsack:
                 print(self.x_ten,self.z_ten)
                 print('Simplex count:'+str(self.simplex_count))
                 if self.q!=1:#準最適解を求めたいとき
-                    for l in range(len(self.process_pool)):
-                        print(self.process_pool[l]['upper_world'])
                     self.finding_suboptimal_solution()                    
                 return
 
@@ -407,14 +408,14 @@ class Knapsack:
 
 
 
-'''
+
 #例題1
 obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 value=np.array([2,3,4,5])
 weight_limit=7
 maximum_integer_range=1#整数条件の最大値
-q=25#解プール機能
-'''
+q=20#解プール機能
+
 
 '''
 #これはコメントアウトしておく.
@@ -434,13 +435,14 @@ e_compare=['Less','Less','Less','Less','Less']
 
 
 
-
+'''
 #例題2
 obj=np.array([-10, -14, -21])  #最大化を考えるので―1倍
 value=np.array([2,3,6])
 weight_limit=7
 maximum_integer_range=2#整数条件の最大値
 q=20#解プール機能
+'''
 
 '''これはコメントアウトしておくメモ
 e_left=np.array([[2,3,6],#ここが重みの制約
