@@ -139,13 +139,13 @@ class Knapsack:
                 '''解の更新'''
                 if P['obj_constant_term']>=self.z_ten*(1-self.q/100) and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解*qより今の解が大きいとき
                     self.solution_pool.append({'x':P['items'],'solution':P['obj_constant_term']})
-                    print('解プールに追加:'+str(P['obj_constant_term']))
+                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+'より、解プールに追加:'+str(P['obj_constant_term']))
                 if P['obj_constant_term']<self.z_ten*(1-self.q/100) and P['upper_world']>=0:
-                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、解プールに追加せず")
+                    print("得られた許容解:"+str(P['upper_world'])+'<暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、解プールに追加せず")
             
                     
             '''限定操作の表示'''
-            if P['upper_world']<=self.z_ten*self.q and P['level']<self.n:#上界が最適解*q以下のときはそれ以下のノードを考えない
+            if P['upper_world']<=self.z_ten*(1-self.q/100) and P['level']<self.n:#上界が最適解*q以下のときはそれ以下のノードを考えない
                 print("上界値:"+str(P['upper_world'])+'<=暫定解*(1-q/100):'+str(self.z_ten*(1-self.q/100))+"より、以下のノードを捨てる")
 
             '''分枝限定操作(ほぼknapsak_start_to_endのコピペ)'''
@@ -186,11 +186,12 @@ class Knapsack:
                     if new_right[0]>=0 and lev<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
                         simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=new_right, e_compare=cmp_copy)
                         relax_variable,relax_solution=simplex_table.start_end()
+                        print(relax_variable,relax_solution)
                         self.simplex_count+=1
                         #print(P['obj_constant_term'])
                         print('部分問題'+str(i+1)+'.上界計算結果:')
                         print(relax_solution+obj_con,relax_variable) 
-                    upper_world=relax_solution+obj_con
+                        upper_world=relax_solution+obj_con
                     if new_right[0]<0 and lev<self.n:#LP緩和実行不可能のとき
                         print('部分問題'+str(i+1)+".LP緩和実行不能。これ以下のノードを捨てる")
                         upper_world=-1
@@ -312,21 +313,22 @@ class Knapsack:
                         self.process_pool.append(P)
 
                 '''解の更新'''
+                if P['obj_constant_term']<=self.z_ten and self.tentative_sol==1 and P['upper_world']>=0:#解の更新をしない場合の表示
+                    print("得られた許容解:"+str(P['upper_world'])+'<=暫定解:'+str(self.z_ten)+"より、暫定解の更新せず")
                 if P['obj_constant_term']>self.z_ten and self.tentative_sol==1 and P['upper_world']>=0:#すべての変数が整数(最下層)で暫定解より今の解が大きいとき
                     old_z_ten=self.z_ten
+                    print("得られた許容解:"+str(P['upper_world'])+'>暫定解:'+str(self.z_ten)+"より、暫定解が更新:"+str(old_z_ten)+'→'+str(P['obj_constant_term']))
                     self.z_ten=P['obj_constant_term']
                     self.x_ten=P['items']
                     self.tentative_sol=1#1になっているときは整数条件を満たす暫定解がself.z_tenに入っていることを表す
-                    print('暫定解が更新:'+str(old_z_ten)+'→'+str(self.z_ten))
                     print(self.x_ten,self.z_ten)
-                if P['obj_constant_term']<self.z_ten and self.tentative_sol==1 and P['upper_world']>=0:#解の更新をしない場合の表示
-                    print("得られた許容解:"+str(P['upper_world'])+'>=暫定解:'+str(self.z_ten)+"より、暫定解の更新せず")
+
 
                 if self.tentative_sol==0 and P['upper_world']>=0:#暫定解の更新が今まで1度もなくすべての変数が整数(最下層)になり、制約を満たすとき
                     self.z_ten=P['obj_constant_term']
                     self.x_ten=P['items']
                     self.tentative_sol=1#暫定解が最低1度は更新されたことを示す
-                    print('暫定解が登録:')
+                    print('暫定解が初めて登録:')
                     print(self.x_ten,self.z_ten)
        
 
@@ -380,7 +382,7 @@ class Knapsack:
                         #print(P['obj_constant_term'])
                         print('部分問題'+str(i+1)+'.上界計算結果:')
                         print(relax_solution+obj_con,relax_variable) 
-                    upper_world=relax_solution+obj_con
+                        upper_world=relax_solution+obj_con
                     if new_right[0]<0 and lev<self.n:#LP緩和実行不可能のとき
                         print('部分問題'+str(i+1)+".LP緩和実行不能。これ以下のノードを捨てる")
                         upper_world=-1
@@ -405,13 +407,14 @@ class Knapsack:
 
 
 
-
+'''
 #例題1
 obj=np.array([-16, -19, -23, -28])  #最大化を考えるので―1倍
 value=np.array([2,3,4,5])
 weight_limit=7
 maximum_integer_range=1#整数条件の最大値
-q=20#準最適解許容率
+q=25#解プール機能
+'''
 
 '''
 #これはコメントアウトしておく.
@@ -431,13 +434,14 @@ e_compare=['Less','Less','Less','Less','Less']
 
 
 
-'''
+
 #例題2
 obj=np.array([-10, -14, -21])  #最大化を考えるので―1倍
 value=np.array([2,3,6])
 weight_limit=7
 maximum_integer_range=2#整数条件の最大値
-'''
+q=20#解プール機能
+
 '''これはコメントアウトしておくメモ
 e_left=np.array([[2,3,6],#ここが重みの制約
                 [1,0,0],
