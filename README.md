@@ -1,5 +1,5 @@
 q=20とした時の実行結果（最適解を求めた後から表示。探索中にノードの要素を保存しておきその後最適解*(1-q/100)を基準に保存した）
-
+```
 The optomal solution :
 [1, 0, 0, 1] 44
 Simplex count:8
@@ -89,3 +89,4 @@ The suboptomal solution :
 42 [0, 1, 1, 0]
 Simplex count:14
 Time:0.1405935287475586
+```
