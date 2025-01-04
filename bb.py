@@ -1,5 +1,3 @@
-from turtle import left
-from types import new_class
 from linear_relaxation import SimplexTable
 import numpy as np
 import time
@@ -122,7 +120,7 @@ class Knapsack:
                 return
 
             '''ここは実行時間重視ならばコメントアウトする。'''
-            '''深さ優先探索にしてわかりやすくしているだけ。最適解の更新はないため探索の効率には影響しないと思う。したがってソートしている分だけ実行が遅くなる'''
+            '''深さ優先探索にしてわかりやすくしているだけ。最適解の更新はないため探索順による効率の改善には影響しないと思う。したがってソートしている分だけ実行が遅くなる'''
             self.process_pool = sorted(self.process_pool, key=lambda x: x['R'][0])#各変数1を先に探索する場合
             self.process_pool = sorted(self.process_pool, key=lambda x: x['level'], reverse=True)#process_poolを階層(level)でソートする(このコードは深さ優先探索としたいため)         
 
@@ -226,9 +224,9 @@ class Knapsack:
                     self.finding_suboptimal_solution()                    
                 return
 
-            self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合
-            #self.L = sorted(self.L, key=lambda x: x['upper_world'],reverse=True)#上界でソートする場合
-            self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
+            #self.L = sorted(self.L, key=lambda x: x['R'][0])#各変数1を先に探索する場合
+            self.L = sorted(self.L, key=lambda x: x['upper_world'],reverse=True)#上界でソートする場合
+            #self.L = sorted(self.L, key=lambda x: x['level'], reverse=True)#Lを階層(level)でソートする(このコードは深さ優先探索としたいため)
 
             print("====================\n以下すべての部分問題のリスト(1番目が今から考える部分問題に選ばれる)\n")
 
@@ -311,7 +309,7 @@ class Knapsack:
                 if P['upper_world']>=0:#制約を満たす
                     print("制約を満たす\nInteger　solution:",end="")
                     print(P['obj_constant_term'])
-                    if self.q!=0:#準最適解を求めたいとき
+                    if self.q!=0 and self.z_ten*(1-self.q/100)<P['upper_world']:#準最適解を求めたいとき、かつ暫定解*(1-q/100)より大きいとき
                         self.process_pool.append(P)
 
                 '''解の更新'''
@@ -338,7 +336,7 @@ class Knapsack:
             '''限定操作の表示'''
             if P['upper_world']<=self.z_ten and P['level']<self.n:#このときは部分問題をLに入れずそれ以下のノードが考えられないため限定操作になる。
                 print("上界値:"+str(P['upper_world'])+'<=暫定解:'+str(self.z_ten)+"より、以下のノードを捨てる")
-                if P['upper_world']>=0 and self.q!=0:#LP緩和実行可能かつ準最適解を求めたいとき
+                if P['upper_world']>=0 and self.q!=0 and self.z_ten*(1-self.q/100)<P['upper_world']:#LP緩和実行可能かつ準最適解を求めたいとき、かつ保存すべき時
                     self.process_pool.append(P)
 
 
@@ -379,11 +377,46 @@ class Knapsack:
                     '''LP緩和'''
                     if new_right[0]>=0 and lev<self.n:#LP緩和が実行可能のとき(ここが負の時のみ実行不可能である。これはナップザック問題に限定したため) 
                         simplex_table = SimplexTable( obj=P['obj'], e_left=P['L'], e_right=new_right, e_compare=cmp_copy)
+                        #print(P['obj'],P['L'],new_right,cmp_copy)
                         relax_variable,relax_solution=simplex_table.start_end()
                         self.simplex_count+=1
                         #print(P['obj_constant_term'])
+                        #print(lev,len(self.bb_obj)-lev)
+                        #LP緩和解の整数判定を行う。
+                        #result='false'
+                        result=self.determine_integer(lev,relax_variable)#整数判定
                         print('部分問題'+str(i+1)+'.上界計算結果:')
                         print(relax_solution+obj_con,relax_variable) 
+                        print('整数条件判定:'+str(result))      
+                        
+                        #整数条件を満たすか判定(満たしていれば暫定解と比較してそれ以下のノードを捨てる)
+                        
+                        if result==True:
+                            item_ten=copy.deepcopy(items_copy)
+                            item_ten.extend([round(relax_variable[i]) for i in range(len(self.bb_obj)-lev)])
+                            
+                            if self.tentative_sol==1 and self.z_ten>=relax_solution+obj_con:#更新しない場合の表示
+                                print('アイテム決定リスト:'+str(item_ten))
+                                print("得られた許容解:"+str(relax_solution+obj_con)+'<=暫定解:'+str(self.z_ten)+'より、暫定解を更新せず')
+                            if self.tentative_sol==1 and self.z_ten<relax_solution+obj_con:
+                                self.x_ten=item_ten
+                                old_z_ten=self.z_ten
+                                print('アイテム決定リスト:'+str(item_ten))
+                                self.z_ten=relax_solution+obj_con
+                                print("得られた許容解:"+str(self.z_ten)+'>暫定解:'+str(old_z_ten)+'より、暫定解が更新:'+str(old_z_ten)+'→'+str(self.z_ten)+str(self.x_ten))
+                              
+
+
+                            if self.tentative_sol==0:
+                                self.x_ten=item_ten
+                                self.z_ten=relax_solution+obj_con
+                                print('初めて暫定解が登録:'+str(self.z_ten)+str(self.x_ten))
+                                self.tentative_sol=1
+                            print('整数条件を満たすためこれより下のノードを捨てる')
+                            if self.q!=0 and self.z_ten*(1-self.q/100)<relax_solution+obj_con:#準最適解を考えるとき、階層を変数の数とする。
+                                self.process_pool.append({'level': lev,'obj': P['obj'], 'R': new_right,'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':items_copy,'upper_world':relax_solution+obj_con})
+                            continue#部分問題をLに入れない(限定操作)
+                                
                         upper_world=relax_solution+obj_con
                     if new_right[0]<0 and lev<self.n:#LP緩和実行不可能のとき
                         print('部分問題'+str(i+1)+".LP緩和実行不能。これ以下のノードを捨てる")
@@ -394,6 +427,7 @@ class Knapsack:
                         if np.dot(self.bb_left[0],items_copy)>self.bb_right[0]:#重み制約を満たさないとき
                             upper_world=-1
 
+                    print(items_copy)
                     self.L.append({'level': lev, 'obj': P['obj'], 'R': new_right,'L': P['L'] ,'cmp': cmp_copy,'obj_constant_term':obj_con,'items':items_copy,'upper_world':upper_world})#二回分枝した分の部分問題をLに挿入
                     #copy.deepcopy(R_copy)は深いコピーという。import copyが前提。こうしないと二回目のループでR_copy[0]を書き換えたときに１回目のループのLの'R'が書き変わってしまう。
                     #pythonではリストをappendするとき参照渡しがされているため    
@@ -403,8 +437,17 @@ class Knapsack:
                 #print("\n")
                 #print(self.L[1])
 
-
-
+    def determine_integer(self, level,relax_variable):
+        #整数かどうかを考える変数の数
+        end_index = len(self.bb_obj) - level
+        tolerance = 1e-6#この値と比較する
+        # すべての要素をチェックし、1つでもFalseがあればすぐに終了
+        for j in range(end_index):
+            value = relax_variable[j]
+            # 四捨五入した値との差が許容範囲内かチェック
+            if abs(value - round(value)) >= tolerance:
+                return False
+        return True
 
 
 
@@ -442,7 +485,7 @@ obj=np.array([-10, -14, -21])  #最大化を考えるので―1倍
 value=np.array([2,3,6])
 weight_limit=7
 maximum_integer_range=2#整数条件の最大値
-q=0#解プール機能
+q=100#解プール機能
 '''
 
 '''これはコメントアウトしておくメモ
@@ -464,7 +507,10 @@ obj=np.array([-3, -4, -1, -2])  #最大化を考えるので―1倍
 value=np.array([2,3,1,3])
 weight_limit=4
 maximum_integer_range=1#整数条件の最大値
+q=0
 '''
+
+
 '''
 #ここはコメントアウトしておくメモ
 #例題3
